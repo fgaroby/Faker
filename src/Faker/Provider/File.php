@@ -567,13 +567,14 @@ class File extends Base
     /**
      * Copy a random file from the source directory to the target directory and returns the filename/fullpath
      *
-     * @param string $sourceDirectory The directory to look for random file taking
-     * @param string $targetDirectory
-     * @param bool   $fullPath        Whether to have the full path or just the filename
+     * @param string      $sourceDirectory The directory to look for random file taking
+     * @param string      $targetDirectory
+     * @param bool        $fullPath        Whether to have the full path or just the filename
+     * @param string|null $extension       The extension or mimetype to look for
      *
      * @return string
      */
-    public static function file($sourceDirectory = '/tmp', $targetDirectory = '/tmp', $fullPath = true)
+    public static function file($sourceDirectory = '/tmp', $targetDirectory = '/tmp', $fullPath = true, $extension = null)
     {
         if (!is_dir($sourceDirectory)) {
             throw new \InvalidArgumentException(sprintf('Source directory %s does not exist or is not a directory.', $sourceDirectory));
@@ -591,6 +592,17 @@ class File extends Base
         $files = array_filter(array_values(array_diff(scandir($sourceDirectory), ['.', '..'])), static function ($file) use ($sourceDirectory) {
             return is_file($sourceDirectory . DIRECTORY_SEPARATOR . $file) && is_readable($sourceDirectory . DIRECTORY_SEPARATOR . $file);
         });
+
+        // If we want a random file with a specific extension
+        if (null !== $extension) {
+            // If the extension is a mime-type, we choose randomly an extension within this mimetype
+            if (in_array($extension, array_keys(static::$mimeTypes), true)) {
+                $extension = is_array(array_keys(static::$mimeTypes)) ? static::randomElement(static::$mimeTypes[$extension]) : array_keys(static::$mimeTypes);
+            }
+            $files = array_filter($files, static function ($file) use ($sourceDirectory, $extension) {
+                return pathinfo($sourceDirectory . DIRECTORY_SEPARATOR . $file, PATHINFO_EXTENSION) == $extension;
+            });
+        }
 
         if (empty($files)) {
             throw new \InvalidArgumentException(sprintf('Source directory %s is empty.', $sourceDirectory));
